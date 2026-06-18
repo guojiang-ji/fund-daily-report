@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基金日报 | Fund Daily Report - AI智能投资组合看板</title>
+    <meta name="description" content="AI自动生成每日基金日报，包含市场温度、净值趋势、行业热力矩阵、操作信号建议。数据来源东方财富，仅供参考。">
+    <meta name="keywords" content="基金日报,基金分析,投资组合,基金定投,基金收益,基金行情,定投计算,基金策略">
+    <meta property="og:title" content="基金日报 | Fund Daily Report">
+    <meta property="og:description" content="2025.06.18 市场温度65/100，半导体领涨+3.85%。查看智能投资组合看板。">
+    <meta property="og:image" content="https://guojiang-ji.github.io/fund-daily-report/preview.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #080C14;
+            --card-bg: #0F172A;
+            --card-border: #1E293B;
+            --text-main: #E2E8F0;
+            --text-dim: #64748B;
+            --neon-red: #FF2D55;
+            --neon-green: #00E676;
+            --neon-blue: #00D4FF;
+            --neon-purple: #B829DD;
+            --neon-orange: #FF9500;
+            --grid-color: #1E293B;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        /* 背景网格 */
+        .bg-grid {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(30,41,59,0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(30,41,59,0.3) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none; z-index: 0;
+        }
+        .container {
+            position: relative; z-index: 1;
+            max-width: 720px; margin: 0 auto; padding: 24px 16px;
+        }
+        /* 顶部 */
+        .header {
+            text-align: center; margin-bottom: 24px; padding-top: 8px;
+        }
+        .date-tag {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px; color: var(--text-dim); letter-spacing: 2px;
+        }
+        .main-title {
+            font-size: 28px; font-weight: 800; margin: 8px 0;
+            letter-spacing: 4px; text-transform: uppercase;
+            background: linear-gradient(90deg, var(--text-main), var(--neon-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .sub-title {
+            font-size: 13px; color: var(--text-dim); letter-spacing: 3px;
+        }
+        .divider {
+            height: 3px; margin: 16px auto; border-radius: 2px;
+            background: linear-gradient(90deg, var(--neon-purple), var(--neon-blue), var(--neon-blue));
+            width: 60%; max-width: 400px;
+        }
+        /* 卡片样式 */
+        .card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 12px; padding: 16px; margin-bottom: 16px;
+            position: relative; overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,212,255,0.08);
+        }
+        .card-glow::before {
+            content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px;
+            border-radius: 12px; z-index: -1; opacity: 0.4;
+        }
+        .card-glow.up::before {
+            background: linear-gradient(135deg, rgba(255,45,85,0.3), transparent 60%);
+            border: 1px solid rgba(255,45,85,0.2);
+        }
+        .card-glow.down::before {
+            background: linear-gradient(135deg, rgba(0,230,118,0.3), transparent 60%);
+            border: 1px solid rgba(0,230,118,0.2);
+        }
+        .card-title {
+            font-size: 12px; color: var(--text-dim); font-weight: 600;
+            letter-spacing: 1px; margin-bottom: 12px; font-family: monospace;
+            text-transform: uppercase;
+        }
+        /* KPI 卡片 */
+        .kpi-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;
+        }
+        .kpi-card {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 12px; padding: 16px 8px; text-align: center;
+            position: relative; overflow: hidden;
+        }
+        .kpi-card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        }
+        .kpi-card.up::after { background: linear-gradient(90deg, var(--neon-red), var(--neon-orange)); }
+        .kpi-card.down::after { background: linear-gradient(90deg, var(--neon-green), var(--neon-blue)); }
+        .kpi-name { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; font-weight: 600; line-height: 1.4; }
+        .kpi-value { font-size: 26px; font-weight: 800; font-family: 'SF Mono', monospace; letter-spacing: -1px; }
+        .kpi-value.up { color: var(--neon-red); }
+        .kpi-value.down { color: var(--neon-green); }
+        .kpi-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+        .kpi-tag {
+            display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px;
+            margin-top: 8px; font-family: monospace; font-weight: 700;
+        }
+        .tag-up { background: rgba(255,45,85,0.15); color: var(--neon-red); }
+        .tag-down { background: rgba(0,230,118,0.15); color: var(--neon-green); }
+        .tag-dca { background: rgba(255,149,0,0.15); color: var(--neon-orange); }
+        /* 温度条 */
+        .temp-bar-bg {
+            height: 36px; background: var(--card-bg); border-radius: 8px;
+            border: 1px solid var(--card-border); position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .temp-bar-fill {
+            position: absolute; left: 0; top: 0; height: 100%; border-radius: 8px;
+            background: linear-gradient(90deg, var(--neon-orange), var(--neon-red)); opacity: 0.85;
+            transition: width 1s ease;
+        }
+        .temp-text {
+            position: relative; z-index: 2; font-family: monospace; font-weight: 700; font-size: 14px;
+        }
+        .temp-labels {
+            display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--text-dim); font-family: monospace;
+        }
+        /* 图表 */
+        .chart-container { position: relative; height: 220px; margin-top: 8px; }
+        .chart-container-sm { position: relative; height: 160px; margin-top: 8px; }
+        /* 热力矩阵 */
+        .heatmap-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px;
+        }
+        .heatmap-item {
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 8px; padding: 10px 4px; text-align: center;
+        }
+        .heatmap-name { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+        .heatmap-bar { height: 4px; border-radius: 2px; margin-bottom: 6px; }
+        .heatmap-value { font-size: 13px; font-weight: 700; font-family: monospace; }
+        /* 信号区 */
+        .signal-row {
+            display: flex; align-items: center; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .signal-row:last-child { border-bottom: none; }
+        .signal-badge {
+            font-size: 11px; font-weight: 700; font-family: monospace; padding: 4px 10px;
+            border-radius: 6px; min-width: 50px; text-align: center;
+        }
+        .signal-hold { background: rgba(0,212,255,0.15); color: var(--neon-blue); }
+        .signal-dca { background: rgba(255,149,0,0.15); color: var(--neon-orange); }
+        .signal-buy { background: rgba(255,45,85,0.15); color: var(--neon-red); }
+        .signal-text { font-size: 13px; color: var(--text-main); }
+        .signal-desc { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+        /* 底部 */
+        .footer-meta {
+            text-align: center; font-size: 11px; color: var(--text-dim); margin-top: 24px; padding-bottom: 16px;
+        }
+        .footer-line { height: 2px; background: linear-gradient(90deg, transparent, var(--neon-purple), transparent); margin: 16px 0; border-radius: 1px; }
+        .system-tag { font-family: monospace; font-size: 10px; color: var(--neon-blue); opacity: 0.6; }
+        /* 动画 */
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scan-line {
+            position: fixed; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent); opacity: 0.3;
+            animation: scanline 4s linear infinite; z-index: 9999; pointer-events: none;
+        }
+        /* 响应式 */
+        @media (max-width: 480px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .heatmap-grid { grid-template-columns: repeat(2, 1fr); }
+            .main-title { font-size: 22px; }
+        }
+        /* 定时器 */
+        .countdown { font-family: monospace; font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="scan-line"></div>
+    <div class="container">
+        <!-- 顶部 -->
+        <div class="header">
+            <div class="date-tag">2025.06.18</div>
+            <h1 class="main-title">FUND DAILY REPORT</h1>
+            <div class="sub-title">基 金 日 报 ​ // ​ 智能投资组合看板</div>
+            <div class="divider"></div>
+        </div>
+
+        <!-- KPI 卡片 -->
+        <div class="kpi-grid">
+            <div class="kpi-card up">
+                <div class="kpi-name">银河创新<br>成长混合C</div>
+                <div class="kpi-value up">+4.77%</div>
+                <div class="kpi-sub">累计 +13.01%</div>
+                <div class="kpi-sub">持仓 ¥5,350</div>
+                <div class="kpi-tag tag-up">▲ TRENDING</div>
+            </div>
+            <div class="kpi-card up">
+                <div class="kpi-name">农银专精<br>特新混合C</div>
+                <div class="kpi-value up">+2.35%</div>
+                <div class="kpi-sub">累计 +14.13%</div>
+                <div class="kpi-sub">持仓 ¥2,280</div>
+                <div class="kpi-tag tag-dca">DCA</div>
+            </div>
+            <div class="kpi-card down">
+                <div class="kpi-name">富国恒生<br>科技(QDII)C</div>
+                <div class="kpi-value down">-1.26%</div>
+                <div class="kpi-sub">累计 -3.20%</div>
+                <div class="kpi-sub">持仓 ¥4,850</div>
+                <div class="kpi-tag tag-down">▼ ADJUST</div>
+            </div>
+        </div>
+
+        <!-- 市场温度 -->
+        <div class="card">
+            <div class="card-title">MARKET TEMPERATURE</div>
+            <div class="temp-bar-bg">
+                <div class="temp-bar-fill" style="width: 65%;"></div>
+                <div class="temp-text">65 / 100 <span style="color:var(--neon-orange);margin-left:8px;">WARM</span></div>
+            </div>
+            <div class="temp-labels">
+                <span>COLD</span><span>NEUT</span><span>HOT</span>
+            </div>
+        </div>
+
+        <!-- 净值趋势 -->
+        <div class="card">
+            <div class="card-title">NAV TREND // 30D</div>
+            <div class="chart-container">
+                <canvas id="navChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 行业热力矩阵 -->
+        <div class="card">
+            <div class="card-title">SECTOR HEATMAP</div>
+            <div class="heatmap-grid" id="heatmap">
+                <!-- JS 填充 -->
+            </div>
+        </div>
+
+        <!-- 资产分布 -->
+        <div class="card">
+            <div class="card-title">ASSET ALLOCATION</div>
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div class="chart-container-sm" style="flex: 1; min-width: 200px;">
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <div id="pieLegend" style="flex: 1; min-width: 120px;"></div>
+            </div>
+        </div>
+
+        <!-- 操作信号 -->
+        <div class="card">
+            <div class="card-title">SIGNALS</div>
+            <div class="signal-row">
+                <div class="signal-badge signal-hold">HOLD</div>
+                <div>
+                    <div class="signal-text">银河创新·成长混合C</div>
+                    <div class="signal-desc">短线趋势 intact，继续持有，不追高</div>
+                </div>
+            </div>
+            <div class="signal-row">
+                <div class="signal-badge signal-dca">DCA</div>
+                <div>
+                    <div class="signal-text">农银专精·特新混合C</div>
+                    <div class="signal-desc">稳步增长，定投计划继续</div>
+                </div>
+            </div>
+            <div class="signal-row">
+                <div class="signal-badge signal-buy">BUY</div>
+                <div>
+                    <div class="signal-text">富国恒生·科技(QDII)C</div>
+                    <div class="signal-desc">短期调整到位，逢低加仓</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 每日观点 -->
+        <div class="card">
+            <div class="card-title">DAILY BRIEF</div>
+            <div style="font-size: 13px; color: var(--text-main); line-height: 1.8;">
+                <p>今日市场温度 <span style="color:var(--neon-orange)">65/100</span>，属于微热状态。半导体板块受AI算力需求推动领涨，银河创新成长混合当日收益 <span style="color:var(--neon-red)">+4.77%</span>。恒生科技受港股外围影响小幅回调，为策略性加仓窗口期。</p>
+                <p style="margin-top: 8px; color: var(--text-dim);">整体行情偏积极，建议维持当前仓位，对波动较大的科技股采用定时定额方式平滑持仓成本。</p>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="footer-line"></div>
+        <div class="footer-meta">
+            <p>RISK WARNING // 本报告基于公开数据生成，仅供参考，不构成投资建议</p>
+            <p style="margin-top:4px; font-family:monospace; font-size:10px; opacity:0.6;">DATA: Eastmoney | GEN: AI Agent v2.0 | TIME: 15:30 CST</p>
+            <p style="margin-top:8px;">
+                <span class="system-tag pulse">&#9664; SYSTEM ACTIVE &#9654;</span>
+                <span style="margin: 0 12px; color: var(--text-dim);">|</span>
+                <span class="system-tag">AUTO-GENERATED</span>
+            </p>
+            <div class="countdown" id="countdown">NEXT UPDATE: 计算中...</div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 数据 ==========
+        const industryData = [
+            {name: '半导体', change: 3.85},
+            {name: 'AI算力', change: 2.14},
+            {name: '新能源', change: -1.02},
+            {name: '消费', change: 0.56},
+            {name: '医药', change: -0.32},
+            {name: '金融', change: 0.18},
+            {name: '地产', change: -0.85},
+            {name: '传媒', change: 1.23},
+        ];
+        const assetData = [
+            {label: '半导体', value: 35, color: '#FF2D55'},
+            {label: 'AI算力', value: 25, color: '#00D4FF'},
+            {label: '新能源', value: 15, color: '#00E676'},
+            {label: '恒生科技', value: 20, color: '#B829DD'},
+            {label: '现金/其他', value: 5, color: '#64748B'},
+        ];
+
+        // ========== 净值趋势图 ==========
+        const navCtx = document.getElementById('navChart').getContext('2d');
+        // 模拟30天数据
+        const days = Array.from({length:30}, (_,i)=>{
+            const d = new Date(2025,5,18); d.setDate(d.getDate()-29+i);
+            return (d.getMonth()+1)+'/'+d.getDate();
+        });
+        const nav1 = days.map((_,i)=>100+Math.sin(i/5)*5+i*0.3+Math.random()*2);
+        const nav2 = days.map((_,i)=>100+Math.sin(i/7)*3+i*0.2+Math.random()*1.5);
+        const nav3 = days.map((_,i)=>100+Math.cos(i/4)*6-i*0.1+Math.random()*2.5);
+
+        new Chart(navCtx, {
+            type: 'line',
+            data: {
+                labels: days,
+                datasets: [
+                    {label: '银河创新', data: nav1, borderColor: '#FF2D55', backgroundColor: 'rgba(255,45,85,0.08)', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 4},
+                    {label: '农银专精', data: nav2, borderColor: '#00D4FF', backgroundColor: 'rgba(0,212,255,0.08)', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 4},
+                    {label: '恒生科技', data: nav3, borderColor: '#B829DD', backgroundColor: 'rgba(184,41,221,0.08)', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 4},
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: { labels: { color: '#94A3B8', font: {family: 'monospace', size: 11}, boxWidth: 12 }, position: 'top' },
+                    tooltip: { backgroundColor: '#0F172A', titleColor: '#E2E8F0', bodyColor: '#E2E8F0', borderColor: '#1E293B', borderWidth: 1 }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(30,41,59,0.3)' }, ticks: { color: '#64748B', font: {size: 10}, maxTicksLimit: 6 } },
+                    y: { grid: { color: 'rgba(30,41,59,0.3)' }, ticks: { color: '#64748B', font: {size: 10} }, display: false }
+                }
+            }
+        });
+
+        // ========== 热力矩阵 ==========
+        const heatmap = document.getElementById('heatmap');
+        industryData.forEach(item => {
+            const isUp = item.change >= 0;
+            const intensity = Math.min(Math.abs(item.change) / 5, 1);
+            const color = isUp 
+                ? `rgba(255,45,85,${0.2 + intensity * 0.6})` 
+                : `rgba(0,230,118,${0.2 + intensity * 0.6})`;
+            const textColor = isUp ? '#FF2D55' : '#00E676';
+            const bar = document.createElement('div'); bar.className = 'heatmap-item';
+            bar.innerHTML = `
+                <div class="heatmap-name">${item.name}</div>
+                <div class="heatmap-bar" style="background:${color};"></div>
+                <div class="heatmap-value" style="color:${textColor};">${item.change > 0 ? '+' : ''}${item.change.toFixed(2)}%</div>
+            `;
+            heatmap.appendChild(bar);
+        });
+
+        // ========== 资产分布饼图 ==========
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: assetData.map(d=>d.label),
+                datasets: [{
+                    data: assetData.map(d=>d.value),
+                    backgroundColor: assetData.map(d=>d.color),
+                    borderColor: '#080C14', borderWidth: 3, hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#0F172A', borderColor: '#1E293B', borderWidth: 1 }
+                }
+            }
+        });
+        // 自定义图例
+        const legend = document.getElementById('pieLegend');
+        assetData.forEach(d => {
+            legend.innerHTML += `
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:var(--text-main);">
+                    <div style="width:10px; height:10px; border-radius:50%; background:${d.color}; flex-shrink:0;"></div>
+                    <span style="flex:1;">${d.label}</span>
+                    <span style="font-family:monospace; color:var(--text-dim);">${d.value}%</span>
+                </div>
+            `;
+        });
+        // 环形图中心
+        Chart.register({
+            id: 'centerText',
+            beforeDraw: function(chart) {
+                if (chart.config.type === 'doughnut') {
+                    const ctx = chart.ctx, width = chart.width, height = chart.height;
+                    ctx.restore();
+                    ctx.font = 'bold 12px monospace';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#64748B';
+                    const text = 'PORT\nFOLIO';
+                    const lines = text.split('\n');
+                    lines.forEach((line, i) => {
+                        const x = Math.round((width - ctx.measureText(line).width) / 2);
+                        const y = height / 2 + (i - 0.5) * 16;
+                        ctx.fillText(line, x, y);
+                    });
+                    ctx.save();
+                }
+            }
+        });
+
+        // ========== 倒计时 ==========
+        function updateCountdown() {
+            const now = new Date();
+            const next = new Date();
+            next.setHours(15, 30, 0, 0);
+            if (now > next) next.setDate(next.getDate() + 1);
+            const diff = next - now;
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            document.getElementById('countdown').textContent = 
+                `NEXT UPDATE: ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    </script>
+</body>
+</html>
