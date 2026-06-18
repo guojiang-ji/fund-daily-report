@@ -1,31 +1,5 @@
-# 🚀 Fund Daily Report | 基金日报
+# \ud83d\ude80 Fund Daily Report | \u57fa\u91d1\u65e5\u62a5
 
-> AI 自动生成的基金投资组合看板，每日 15:30 自动更新
+> AI \u81ea\u52a8\u751f\u6210\u7684\u57fa\u91d1\u6295\u8d44\u7ec4\u5408\u770b\u677f\uff0c\u6bcf\u65e5 15:30 \u81ea\u52a8\u66f4\u65b0
 
-## ✨ 特性
-
-- ⚡ **实时市场温度** — 量化市场情绪，0-100 热力值
-- 📈 **净值趋势曲线** — 30 天历史走势一目了然
-- 🔥 **行业热力矩阵** — 半导体 / AI / 新能源 等资产板块涨跌
-- 💡 **操作信号** — HOLD / DCA / BUY 智能投资建议
-- 📊 **资产分布** — 环形图展示组合构成
-
-## 🔗 在线访问
-
-🌐 **https://guojiang-ji.github.io/fund-daily-report**
-
-## 📋 数据来源
-
-- 基金净值、行业涨跌 — 东方财富 (Eastmoney)
-- 更新时间 — 每日 15:30 CST (收盘后)
-
-## ⚠️ 声明
-
-本报告基于公开数据自动生成，**仅供参考，不构成投资建议**。
-投资有风险，入市需谨慎。
-
----
-
-<p align="center">
-  <sub>Built with ❤️ by AI Agent | 自动部署 | GitHub Pages</sub>
-</p>
+v1.0
